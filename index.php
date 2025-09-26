@@ -93,6 +93,7 @@ if (isset($_GET['email'])) {
             <div class="button-group">
                 <button type="button" class="btn btn-primary" onclick="saveCustomer()">Save</button>
                 <button type="button" class="btn btn-secondary" onclick="cancelChanges()">Cancel</button>
+                <button type="button" class="btn btn-info" id="screen-share-btn" onclick="toggleScreenShare()">📺 Share Screen</button>
             </div>
         </form>
 
@@ -103,5 +104,34 @@ if (isset($_GET['email'])) {
 
     <script src="js/validation.js"></script>
     <script src="js/screenshare.js"></script>
+    <script>
+        function toggleScreenShare() {
+            if (window.screenShareManager) {
+                if (window.screenShareManager.isSharing) {
+                    window.screenShareManager.stopScreenShare();
+                    document.getElementById('screen-share-btn').textContent = '📺 Share Screen';
+                } else {
+                    window.screenShareManager.startScreenShare();
+                    document.getElementById('screen-share-btn').textContent = '🛑 Stop Sharing';
+                }
+            }
+        }
+
+        // Update button text based on sharing state
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.screenShareManager) {
+                // Override the updateUI method to also update our button
+                const originalUpdateUI = window.screenShareManager.updateUI;
+                window.screenShareManager.updateUI = function() {
+                    originalUpdateUI.call(this);
+                    const shareBtn = document.getElementById('screen-share-btn');
+                    if (shareBtn) {
+                        shareBtn.textContent = this.isSharing ? '🛑 Stop Sharing' : '📺 Share Screen';
+                        shareBtn.classList.toggle('sharing', this.isSharing);
+                    }
+                };
+            }
+        });
+    </script>
 </body>
 </html>

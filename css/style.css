@@ -132,6 +132,23 @@ select:focus {
     background-color: #7f8c8d;
 }
 
+.btn-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+}
+
+.btn-info.sharing {
+    background-color: #dc3545;
+}
+
+.btn-info.sharing:hover {
+    background-color: #c82333;
+}
+
 .calculator-section {
     background: #f8f9fa;
     border-radius: 10px;

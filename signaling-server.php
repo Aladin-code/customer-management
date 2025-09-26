@@ -8,10 +8,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Use a simple text file for message storage
-$dataDir = sys_get_temp_dir() . '/screenshare/';
+// Use current directory for message storage (more reliable on shared hosting)
+$dataDir = __DIR__ . '/temp_messages/';
 if (!is_dir($dataDir)) {
-    @mkdir($dataDir, 0777, true);
+    @mkdir($dataDir, 0755, true);
 }
 
 $messagesFile = $dataDir . 'messages.txt';
