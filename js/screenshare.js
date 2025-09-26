@@ -162,9 +162,11 @@ class ScreenShareManager {
 
     setupPeerConnection() {
         this.peerConnection = new RTCPeerConnection(this.configuration);
+        this.iceCandidatesQueue = []; // Queue for early ICE candidates
 
         // Add local stream to peer connection
         this.localStream.getTracks().forEach(track => {
+            console.log('Adding track to peer connection:', track.kind, track.label);
             this.peerConnection.addTrack(track, this.localStream);
         });
 
@@ -181,9 +183,13 @@ class ScreenShareManager {
 
         // Handle remote stream
         this.peerConnection.addEventListener('track', (event) => {
+            console.log('Received track:', event.track.kind, 'with streams:', event.streams.length);
             const remoteVideo = document.getElementById('remote-video');
-            remoteVideo.srcObject = event.streams[0];
-            remoteVideo.style.display = 'block';
+            if (event.streams.length > 0) {
+                remoteVideo.srcObject = event.streams[0];
+                remoteVideo.style.display = 'block';
+                console.log('Set remote video source');
+            }
         });
 
         // Setup signaling message handler
@@ -197,10 +203,26 @@ class ScreenShareManager {
                     await this.handleJoinRequest();
                     break;
                 case 'answer':
+                    console.log('Received answer, setting remote description');
                     await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                    console.log('Remote description set, processing queued ICE candidates');
+
+                    // Process any queued ICE candidates
+                    while (this.iceCandidatesQueue.length > 0) {
+                        const candidate = this.iceCandidatesQueue.shift();
+                        await this.peerConnection.addIceCandidate(candidate);
+                        console.log('Added queued ICE candidate');
+                    }
                     break;
                 case 'ice-candidate':
-                    await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    const candidate = new RTCIceCandidate(message.candidate);
+                    if (this.peerConnection.remoteDescription) {
+                        console.log('Adding ICE candidate immediately');
+                        await this.peerConnection.addIceCandidate(candidate);
+                    } else {
+                        console.log('Queueing ICE candidate (no remote description yet)');
+                        this.iceCandidatesQueue.push(candidate);
+                    }
                     break;
             }
         };
@@ -208,7 +230,15 @@ class ScreenShareManager {
 
     async handleJoinRequest() {
         try {
-            const offer = await this.peerConnection.createOffer();
+            console.log('Creating offer for join request, tracks:', this.peerConnection.getSenders().length);
+
+            // Create offer with explicit options
+            const offer = await this.peerConnection.createOffer({
+                offerToReceiveVideo: false,
+                offerToReceiveAudio: false
+            });
+
+            console.log('Offer created:', offer);
             await this.peerConnection.setLocalDescription(offer);
 
             this.sendSignalingMessage({

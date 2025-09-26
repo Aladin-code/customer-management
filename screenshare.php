@@ -178,6 +178,7 @@ $sessionId = isset($_GET['session']) ? htmlspecialchars($_GET['session']) : '';
             async joinSession() {
                 try {
                     this.peerConnection = new RTCPeerConnection(this.configuration);
+                    this.iceCandidatesQueue = []; // Queue for early ICE candidates
 
                     // Handle ICE candidates
                     this.peerConnection.addEventListener('icecandidate', (event) => {
@@ -192,13 +193,26 @@ $sessionId = isset($_GET['session']) ? htmlspecialchars($_GET['session']) : '';
 
                     // Handle remote stream
                     this.peerConnection.addEventListener('track', (event) => {
-                        console.log('Received remote stream');
+                        console.log('Received remote stream, track kind:', event.track.kind, 'streams:', event.streams.length);
                         const remoteVideo = document.getElementById('remote-video');
-                        remoteVideo.srcObject = event.streams[0];
-                        remoteVideo.style.display = 'block';
-                        document.getElementById('loading-message').style.display = 'none';
-                        this.updateConnectionStatus('Connected');
-                        this.isConnected = true;
+
+                        if (event.streams.length > 0) {
+                            console.log('Setting video source object');
+                            remoteVideo.srcObject = event.streams[0];
+
+                            // Ensure video plays
+                            remoteVideo.play().then(() => {
+                                console.log('Video started playing');
+                                remoteVideo.style.display = 'block';
+                                document.getElementById('loading-message').style.display = 'none';
+                                this.updateConnectionStatus('Connected');
+                                this.isConnected = true;
+                            }).catch(err => {
+                                console.error('Error playing video:', err);
+                            });
+                        } else {
+                            console.warn('No streams received with track');
+                        }
                     });
 
                     // Handle connection state changes
@@ -231,20 +245,41 @@ $sessionId = isset($_GET['session']) ? htmlspecialchars($_GET['session']) : '';
                             switch (message.type) {
                                 case 'offer':
                                     console.log('Received offer, signaling state:', this.peerConnection.signalingState);
+                                    console.log('Offer SDP:', message.offer.sdp);
+
                                     await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                                    console.log('Remote description set');
+
                                     const answer = await this.peerConnection.createAnswer();
+                                    console.log('Answer created:', answer.sdp);
+
                                     await this.peerConnection.setLocalDescription(answer);
+                                    console.log('Local description set');
 
                                     this.sendMessage({
                                         type: 'answer',
                                         answer: answer,
                                         sessionId: this.sessionId
                                     });
-                                    console.log('Sent answer');
+                                    console.log('Sent answer to signaling server');
+
+                                    // Process any queued ICE candidates after setting remote description
+                                    console.log('Processing queued ICE candidates:', this.iceCandidatesQueue.length);
+                                    while (this.iceCandidatesQueue.length > 0) {
+                                        const candidate = this.iceCandidatesQueue.shift();
+                                        await this.peerConnection.addIceCandidate(candidate);
+                                        console.log('Added queued ICE candidate');
+                                    }
                                     break;
                                 case 'ice-candidate':
-                                    console.log('Received ICE candidate');
-                                    await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                                    const candidate = new RTCIceCandidate(message.candidate);
+                                    if (this.peerConnection.remoteDescription) {
+                                        console.log('Adding ICE candidate immediately');
+                                        await this.peerConnection.addIceCandidate(candidate);
+                                    } else {
+                                        console.log('Queueing ICE candidate (no remote description yet)');
+                                        this.iceCandidatesQueue.push(candidate);
+                                    }
                                     break;
                             }
                         } catch (error) {
