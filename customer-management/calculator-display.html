@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator Display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            background-color: #f0f0f0;
+        }
+
+        .display {
+            background-color: #000;
+            color: #00ff00;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            text-align: right;
+            min-height: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+
+        .display.empty {
+            color: #004400;
+        }
+    </style>
+</head>
+<body>
+    <div id="display" class="display empty">0</div>
+
+    <script>
+        let currentDisplay = '';
+
+        // Listen for messages from parent window
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'calculator-input') {
+                handleInput(event.data.value);
+            } else if (event.data.type === 'calculator-clear') {
+                clear();
+            }
+        });
+
+        function handleInput(value) {
+            const displayElement = document.getElementById('display');
+
+            if (value === '=') {
+                // Send current expression to parent for calculation
+                if (currentDisplay) {
+                    window.parent.postMessage({
+                        type: 'calculator-calculate',
+                        expression: currentDisplay
+                    }, '*');
+                }
+            } else if (value === 'C') {
+                clear();
+            } else {
+                // Add to display
+                if (currentDisplay === '0' || displayElement.classList.contains('empty')) {
+                    currentDisplay = value;
+                } else {
+                    currentDisplay += value;
+                }
+
+                displayElement.textContent = currentDisplay;
+                displayElement.classList.remove('empty');
+            }
+        }
+
+        function clear() {
+            currentDisplay = '';
+            const displayElement = document.getElementById('display');
+            displayElement.textContent = '0';
+            displayElement.classList.add('empty');
+        }
+
+        function updateDisplay(value) {
+            const displayElement = document.getElementById('display');
+            displayElement.textContent = value;
+            currentDisplay = value.toString();
+            displayElement.classList.remove('empty');
+        }
+
+        // Listen for result updates from parent
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'calculator-result') {
+                updateDisplay(event.data.result);
+            } else if (event.data.type === 'calculator-error') {
+                updateDisplay('Error');
+                setTimeout(clear, 2000); // Clear after 2 seconds
+            }
+        });
+    </script>
+</body>
+</html>

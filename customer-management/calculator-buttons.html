@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator Buttons</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        .calculator {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            max-width: 200px;
+        }
+
+        .btn {
+            background-color: #e0e0e0;
+            border: 1px solid #999;
+            border-radius: 3px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background-color: #d0d0d0;
+        }
+
+        .btn:active {
+            background-color: #c0c0c0;
+            transform: translateY(1px);
+        }
+
+        .btn.operator {
+            background-color: #ff9500;
+            color: white;
+        }
+
+        .btn.operator:hover {
+            background-color: #e6850e;
+        }
+
+        .btn.equals {
+            background-color: #ff9500;
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn.equals:hover {
+            background-color: #e6850e;
+        }
+
+        .btn.clear {
+            background-color: #a6a6a6;
+            color: white;
+        }
+
+        .btn.clear:hover {
+            background-color: #969696;
+        }
+
+        .btn.zero {
+            grid-column: span 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <button class="btn clear" onclick="sendInput('C')">C</button>
+        <button class="btn" onclick="sendInput('7')">7</button>
+        <button class="btn" onclick="sendInput('8')">8</button>
+        <button class="btn" onclick="sendInput('9')">9</button>
+
+        <button class="btn operator" onclick="sendInput('-')">-</button>
+        <button class="btn" onclick="sendInput('4')">4</button>
+        <button class="btn" onclick="sendInput('5')">5</button>
+        <button class="btn" onclick="sendInput('6')">6</button>
+
+        <button class="btn operator" onclick="sendInput('+')">+</button>
+        <button class="btn" onclick="sendInput('1')">1</button>
+        <button class="btn" onclick="sendInput('2')">2</button>
+        <button class="btn" onclick="sendInput('3')">3</button>
+
+        <button class="btn equals" onclick="sendInput('=')">=</button>
+        <button class="btn zero" onclick="sendInput('0')">0</button>
+    </div>
+
+    <script>
+        function sendInput(value) {
+            // Send input to display iframe
+            const displayFrame = parent.document.querySelector('iframe[src="calculator-display.html"]');
+            if (displayFrame) {
+                displayFrame.contentWindow.postMessage({
+                    type: 'calculator-input',
+                    value: value
+                }, '*');
+            }
+
+            // If it's equals, also send to parent for result calculation
+            if (value === '=') {
+                parent.postMessage({
+                    type: 'calculator-equals'
+                }, '*');
+            }
+        }
+
+        // Add keyboard support
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+
+            if (key >= '0' && key <= '9') {
+                sendInput(key);
+            } else if (key === '+' || key === '-') {
+                sendInput(key);
+            } else if (key === '=' || key === 'Enter') {
+                sendInput('=');
+            } else if (key === 'Escape' || key === 'c' || key === 'C') {
+                sendInput('C');
+            }
+        });
+
+        // Focus the document to receive keyboard events
+        document.body.focus();
+        document.body.setAttribute('tabindex', '-1');
+    </script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Share Test</title>
+    <link rel="stylesheet" href="css/screenshare.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .test-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .test-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .test-info {
+            background: #cce7ff;
+            border: 1px solid #b3d7ff;
+            color: #004085;
+        }
+        code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Screen Share Functionality Test</h1>
+        <p>This page tests the screen sharing functionality to ensure everything works correctly.</p>
+
+        <div class="test-section">
+            <h2>1. Browser Compatibility Test</h2>
+            <div id="browser-test"></div>
+            <button onclick="testBrowserSupport()" class="btn btn-primary">Test Browser Support</button>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Screen Capture API Test</h2>
+            <div id="screencapture-test"></div>
+            <button onclick="testScreenCapture()" class="btn btn-primary">Test Screen Capture</button>
+        </div>
+
+        <div class="test-section">
+            <h2>3. WebRTC Support Test</h2>
+            <div id="webrtc-test"></div>
+            <button onclick="testWebRTC()" class="btn btn-primary">Test WebRTC</button>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Screen Share Component Test</h2>
+            <div id="component-test"></div>
+            <button onclick="testScreenShareComponent()" class="btn btn-primary">Test Component Loading</button>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Full Integration Test</h2>
+            <p>The screen share utility should appear in the top-right corner of this page when loaded.</p>
+            <div id="integration-test"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test URLs</h2>
+            <p>Use these URLs to test the functionality:</p>
+            <ul>
+                <li><strong>Customer Entry Form:</strong> <a href="index.php" target="_blank">index.php</a></li>
+                <li><strong>Customer Review Page:</strong> <a href="review.php" target="_blank">review.php</a></li>
+                <li><strong>Screen Share Viewer:</strong> <a href="screenshare.php?session=test123" target="_blank">screenshare.php?session=test123</a></li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Usage Instructions</h2>
+            <ol>
+                <li><strong>Start sharing:</strong> Go to index.php or review.php and click "Start Sharing"</li>
+                <li><strong>Grant permission:</strong> Allow screen capture when prompted</li>
+                <li><strong>Copy URL:</strong> Use "Copy Share URL" button</li>
+                <li><strong>Share URL:</strong> Send to co-worker</li>
+                <li><strong>View screen:</strong> Co-worker clicks URL to see shared screen</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="js/screenshare.js"></script>
+    <script>
+        function testBrowserSupport() {
+            const resultDiv = document.getElementById('browser-test');
+            let results = [];
+
+            // Test user agent
+            const isChrome = /Chrome/.test(navigator.userAgent);
+            const isFirefox = /Firefox/.test(navigator.userAgent);
+            const isEdge = /Edg/.test(navigator.userAgent);
+            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+            results.push(`<div class="test-info">Browser: ${navigator.userAgent}</div>`);
+
+            // Test screen capture support
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                results.push('<div class="test-success">✓ Screen capture API supported</div>');
+            } else {
+                results.push('<div class="test-error">✗ Screen capture API not supported</div>');
+            }
+
+            // Test WebRTC support
+            if (window.RTCPeerConnection) {
+                results.push('<div class="test-success">✓ WebRTC supported</div>');
+            } else {
+                results.push('<div class="test-error">✗ WebRTC not supported</div>');
+            }
+
+            // Test localStorage
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                results.push('<div class="test-success">✓ localStorage available</div>');
+            } catch (e) {
+                results.push('<div class="test-error">✗ localStorage not available</div>');
+            }
+
+            resultDiv.innerHTML = results.join('');
+        }
+
+        function testScreenCapture() {
+            const resultDiv = document.getElementById('screencapture-test');
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                resultDiv.innerHTML = '<div class="test-error">Screen capture API not supported</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="test-info">Testing screen capture... (you may be prompted for permission)</div>';
+
+            navigator.mediaDevices.getDisplayMedia({ video: true })
+                .then(stream => {
+                    resultDiv.innerHTML = '<div class="test-success">✓ Screen capture works! Stream obtained.</div>';
+                    // Stop the stream immediately
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(error => {
+                    if (error.name === 'NotAllowedError') {
+                        resultDiv.innerHTML = '<div class="test-error">✗ Permission denied for screen capture</div>';
+                    } else {
+                        resultDiv.innerHTML = `<div class="test-error">✗ Screen capture failed: ${error.message}</div>`;
+                    }
+                });
+        }
+
+        function testWebRTC() {
+            const resultDiv = document.getElementById('webrtc-test');
+            let results = [];
+
+            if (window.RTCPeerConnection) {
+                results.push('<div class="test-success">✓ RTCPeerConnection available</div>');
+
+                try {
+                    const pc = new RTCPeerConnection({
+                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    });
+                    results.push('<div class="test-success">✓ RTCPeerConnection can be created</div>');
+                    pc.close();
+                } catch (e) {
+                    results.push(`<div class="test-error">✗ RTCPeerConnection creation failed: ${e.message}</div>`);
+                }
+            } else {
+                results.push('<div class="test-error">✗ RTCPeerConnection not available</div>');
+            }
+
+            // Test STUN server connectivity (simplified)
+            if (window.RTCPeerConnection) {
+                const pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+
+                pc.createDataChannel('test');
+                pc.createOffer().then(offer => {
+                    return pc.setLocalDescription(offer);
+                }).then(() => {
+                    results.push('<div class="test-success">✓ ICE gathering works</div>');
+                }).catch(e => {
+                    results.push(`<div class="test-error">✗ ICE gathering failed: ${e.message}</div>`);
+                });
+
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        results.push('<div class="test-success">✓ ICE candidates generated</div>');
+                        resultDiv.innerHTML = results.join('');
+                    }
+                };
+
+                setTimeout(() => pc.close(), 5000);
+            }
+
+            resultDiv.innerHTML = results.join('');
+        }
+
+        function testScreenShareComponent() {
+            const resultDiv = document.getElementById('component-test');
+            let results = [];
+
+            // Test if ScreenShareManager class exists
+            if (typeof ScreenShareManager !== 'undefined') {
+                results.push('<div class="test-success">✓ ScreenShareManager class loaded</div>');
+            } else {
+                results.push('<div class="test-error">✗ ScreenShareManager class not found</div>');
+            }
+
+            // Test if screen share container exists
+            const container = document.getElementById('screenshare-container');
+            if (container) {
+                results.push('<div class="test-success">✓ Screen share container created</div>');
+            } else {
+                results.push('<div class="test-error">✗ Screen share container not found</div>');
+            }
+
+            // Test if buttons exist
+            const startBtn = document.getElementById('start-share-btn');
+            if (startBtn) {
+                results.push('<div class="test-success">✓ Start sharing button found</div>');
+            } else {
+                results.push('<div class="test-error">✗ Start sharing button not found</div>');
+            }
+
+            // Test CSS loading
+            const cssLoaded = getComputedStyle(document.body).getPropertyValue('--screenshare-loaded') ||
+                             document.querySelector('link[href*="screenshare.css"]');
+            if (cssLoaded || document.querySelector('.screenshare-container')) {
+                results.push('<div class="test-success">✓ Screen share CSS loaded</div>');
+            } else {
+                results.push('<div class="test-info">? Screen share CSS may not be loaded</div>');
+            }
+
+            resultDiv.innerHTML = results.join('');
+        }
+
+        // Run integration test on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const integrationDiv = document.getElementById('integration-test');
+
+            setTimeout(() => {
+                const container = document.getElementById('screenshare-container');
+                if (container && window.screenShareManager) {
+                    integrationDiv.innerHTML = `
+                        <div class="test-success">✓ Screen share utility loaded successfully!</div>
+                        <div class="test-info">Look for the screen share controls in the top-right corner.</div>
+                    `;
+                } else {
+                    integrationDiv.innerHTML = `
+                        <div class="test-error">✗ Screen share utility not loaded properly</div>
+                        <div class="test-info">Check browser console for errors.</div>
+                    `;
+                }
+            }, 1000);
+        });
+
+        // Initial browser test
+        setTimeout(() => testBrowserSupport(), 500);
+    </script>
+</body>
+</html>
