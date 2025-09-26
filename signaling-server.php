@@ -1,7 +1,6 @@
 <?php
 /**
- * WebRTC Signaling Server - Memory-based (simplified)
- * Handles message passing between screen share peers across networks
+ * Simple WebRTC Signaling Server
  */
 
 header('Content-Type: application/json');
@@ -13,116 +12,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Use session storage instead of files
-session_start();
+$messagesFile = 'messages.json';
+
+// Initialize file if it doesn't exist
+if (!file_exists($messagesFile)) {
+    file_put_contents($messagesFile, '[]');
+}
 
 function getMessages() {
-    return isset($_SESSION['signaling_messages']) ? $_SESSION['signaling_messages'] : [];
+    global $messagesFile;
+    $content = @file_get_contents($messagesFile);
+    return $content ? json_decode($content, true) : [];
 }
 
 function saveMessage($message) {
-    if (!isset($_SESSION['signaling_messages'])) {
-        $_SESSION['signaling_messages'] = [];
-    }
-
+    global $messagesFile;
+    $messages = getMessages();
     $message['timestamp'] = time();
-    $message['id'] = uniqid();
-    $_SESSION['signaling_messages'][] = $message;
+    $messages[] = $message;
 
-    // Keep only last 50 messages to prevent memory bloat
-    if (count($_SESSION['signaling_messages']) > 50) {
-        $_SESSION['signaling_messages'] = array_slice($_SESSION['signaling_messages'], -50);
+    // Keep only last 20 messages
+    if (count($messages) > 20) {
+        $messages = array_slice($messages, -20);
     }
 
-    return $message['id'];
-}
-
-function getSession($sessionId) {
-    $sessions = isset($_SESSION['sessions']) ? $_SESSION['sessions'] : [];
-    return isset($sessions[$sessionId]) ? $sessions[$sessionId] : null;
-}
-
-function updateSession($sessionId, $data) {
-    if (!isset($_SESSION['sessions'])) {
-        $_SESSION['sessions'] = [];
-    }
-
-    if (!isset($_SESSION['sessions'][$sessionId])) {
-        $_SESSION['sessions'][$sessionId] = [
-            'created' => time(),
-            'sharer' => null,
-            'viewers' => []
-        ];
-    }
-
-    $_SESSION['sessions'][$sessionId] = array_merge($_SESSION['sessions'][$sessionId], $data);
-    $_SESSION['sessions'][$sessionId]['updated'] = time();
-
-    // Clean up old sessions (older than 30 minutes for memory efficiency)
-    foreach ($_SESSION['sessions'] as $sid => $session) {
-        if (time() - $session['updated'] > 1800) {
-            unset($_SESSION['sessions'][$sid]);
-        }
-    }
+    @file_put_contents($messagesFile, json_encode($messages));
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true);
 
-switch ($method) {
-    case 'POST':
-        if (!$input || !isset($input['type']) || !isset($input['sessionId'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Invalid request']);
-            exit;
+try {
+    if ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if ($input && isset($input['sessionId'])) {
+            saveMessage($input);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['error' => 'Invalid input']);
         }
 
-        $messageId = saveMessage($input);
-
-        // Update session info based on message type
-        switch ($input['type']) {
-            case 'join-request':
-                $session = getSession($input['sessionId']);
-                if (!$session) {
-                    updateSession($input['sessionId'], []);
-                }
-                break;
-            case 'offer':
-                updateSession($input['sessionId'], ['sharer' => $input['from'] ?? 'anonymous']);
-                break;
-        }
-
-        echo json_encode(['success' => true, 'messageId' => $messageId]);
-        break;
-
-    case 'GET':
+    } else if ($method === 'GET') {
         $sessionId = $_GET['session'] ?? '';
         $since = intval($_GET['since'] ?? 0);
 
         if (!$sessionId) {
-            http_response_code(400);
             echo json_encode(['error' => 'Session ID required']);
             exit;
         }
 
         $messages = getMessages();
-        $sessionMessages = [];
+        $filtered = [];
 
-        foreach ($messages as $message) {
-            if ($message['sessionId'] === $sessionId && $message['timestamp'] > $since) {
-                $sessionMessages[] = $message;
+        foreach ($messages as $msg) {
+            if (isset($msg['sessionId']) && $msg['sessionId'] === $sessionId && $msg['timestamp'] > $since) {
+                $filtered[] = $msg;
             }
         }
 
         echo json_encode([
-            'messages' => $sessionMessages,
+            'messages' => $filtered,
             'timestamp' => time()
         ]);
-        break;
 
-    default:
-        http_response_code(405);
+    } else {
         echo json_encode(['error' => 'Method not allowed']);
-        break;
+    }
+
+} catch (Exception $e) {
+    echo json_encode(['error' => 'Server error']);
 }
 ?>
