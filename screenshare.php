@@ -230,31 +230,25 @@ $sessionId = isset($_GET['session']) ? htmlspecialchars($_GET['session']) : '';
                         try {
                             switch (message.type) {
                                 case 'offer':
-                                    if (this.peerConnection.signalingState === 'stable' || this.peerConnection.signalingState === 'have-local-offer') {
-                                        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                                    console.log('Received offer, signaling state:', this.peerConnection.signalingState);
+                                    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                                    const answer = await this.peerConnection.createAnswer();
+                                    await this.peerConnection.setLocalDescription(answer);
 
-                                        if (this.peerConnection.signalingState === 'have-remote-offer') {
-                                            const answer = await this.peerConnection.createAnswer();
-                                            await this.peerConnection.setLocalDescription(answer);
-
-                                            this.sendMessage({
-                                                type: 'answer',
-                                                answer: answer,
-                                                sessionId: this.sessionId
-                                            });
-                                        }
-                                    }
+                                    this.sendMessage({
+                                        type: 'answer',
+                                        answer: answer,
+                                        sessionId: this.sessionId
+                                    });
+                                    console.log('Sent answer');
                                     break;
                                 case 'ice-candidate':
-                                    if (this.peerConnection.remoteDescription) {
-                                        await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                                    }
+                                    console.log('Received ICE candidate');
+                                    await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
                                     break;
                             }
                         } catch (error) {
                             console.error('Error handling message:', error);
-                            // Reset connection on error
-                            this.showError('Connection error. Please refresh to try again.');
                         }
                     };
 
